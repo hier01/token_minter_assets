@@ -1,7 +1,7 @@
 {
   "name": "token-minter-assets",
   "version": "1.0.0",
-  "description": "Example uses Webpack to bundle Flow fcl plus node.js builtin dependencies",
+  "description": "Example uses Webpack 5 to bundle Flow fcl.  Includes polyfill for node.js builtins (at the bottom)--purely a Webpack 5 thing",
   "main": "app.js",
   "scripts": {
     "build": "webpack",
@@ -15,9 +15,10 @@
   },
   "dependencies": {
     "@onflow/fcl": "^0.0.78",
-    "dropzone": "^6.0.0-beta.2",
+    "carbites": "^1.0.6",
     "ipfs-car": "^0.7.0",
-    "lodash": "^4.17.21",
-    "papaparse": "^5.3.2"
+    "papaparse": "^5.3.2",
+    "nft.storage":"latest",
+    "node-polyfill-webpack-plugin":"latest"
   }
 }
