@@ -1,0 +1,36 @@
+#ignoring minified layouts
+public/layouts/*.min.*
+
+#ignore minified views: these should be generated locally via grunt; not tracked
+public/views/**/*.min.*
+
+#ignoring emacs backup files
+*~
+
+# Ignore mac os/x files
+.DS_Store
+
+# ignore tmp and mytmp dirs
+tmp/**/* 
+mytmp/**/*
+
+# Ignore node_modules
+# See https://www.npmjs.org/doc/misc/npm-faq.html#should-i-check-my-node_modules-folder-into-git-
+# where it is written: "Usually, no. Allow npm to resolve dependencies for your packages."
+# "For packages you deploy, such as websites and apps, you should use npm to lock down your full dependency tree:"
+node_modules
+
+# bower stuff
+bower_components
+
+# html files are generated from jade templates
+public/html
+
+#  fonts are handled by npm and bower; don't track
+public/fonts
+
+#  public/vendor directory contains packages handled by bower; copied in by grunt build
+public/vendor
+
+#  ssl certs, especially private keys, are not stored in the repository
+ssl

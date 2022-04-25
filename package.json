@@ -1,0 +1,23 @@
+{
+  "name": "token-minter-assets",
+  "version": "1.0.0",
+  "description": "Example uses Webpack to bundle Flow fcl plus node.js builtin dependencies",
+  "main": "app.js",
+  "scripts": {
+    "build": "webpack",
+    "start": "node app.js"
+  },
+  "author": "@hier01",
+  "license": "ISC",
+  "devDependencies": {
+    "webpack": "latest",
+    "webpack-cli": "latest"
+  },
+  "dependencies": {
+    "@onflow/fcl": "^0.0.78",
+    "dropzone": "^6.0.0-beta.2",
+    "ipfs-car": "^0.7.0",
+    "lodash": "^4.17.21",
+    "papaparse": "^5.3.2"
+  }
+}
