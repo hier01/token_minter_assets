@@ -2,9 +2,9 @@
 
 Greetings *__Emerald City Token Minters__*!
 
-Here's a simple tool for uploading NFT assets directly from a user's machine to NFT.Storage.
+Here's a script for uploading NFT assets directly from a user's machine to NFT.Storage.
 
-This is a standalone piece designed to be grafted into the Token Minter NFT project.  It just uses Webpack as a bundler, so there's no client-side framework (Svelte, etc).
+This is a standalone piece built as part of the Token Minter NFT project.  It just uses Webpack as a bundler, so there's no client-side framework (Svelte, etc).
 
 ## Test Drive:
 
@@ -22,7 +22,7 @@ Then, in a browser
 
 But guess what--the assets folder in the repo has already been uploaded to IPFS, so it's not really going to do it again.
 
-Why?  IPFS uses a "fingerprint" based on the upload contents to index stuff. (Yes Poindexter, it's "content-addressable.") That means it creates a unique cryptographic "hash code" from the actual contents of the assets folder.
+Why?  IPFS uses a "fingerprint" based on the upload contents to index stuff. (right Poindexter, the technical term is "content-addressable.") That means it creates a unique cryptographic "hash code" from the actual contents of the assets folder.
 If the contents don't change, it will generate the same identical hash code. That is how the contents can be validated. But it's also why IPFS is not going to upload and store the same exact thing again.  
 
 ## Play:
@@ -39,7 +39,13 @@ The assets folder contains
 
 Create the metadata file in a spreadsheet like MS Word or Google Sheets.  Save as a comma-separated values (CSV) file.  Put it in your assets directory with the NFT images.
 
-Put the property names in the first row.  Property names must coordinate with your NFT contract.  
+Put the property names in the first row.  Property names must coordinate with your NFT contract.  That means these should include
+- name
+- description
+- thumbnail
+- filename
+
+Filename is a placeholder for the main NFT asset file, whether png, jpeg, video, etc.  Suggestions welcome.
 
 Put the values for each NFT in a separate row below that.
 
