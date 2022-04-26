@@ -7,15 +7,11 @@ import { TreewalkCarSplitter } from 'carbites/treewalk'
 import * as fcl from '@onflow/fcl';
 
 
-const OK = 1; // status: image file found
+const OK = 1; // status: image file linked with metadata
+const NOK = 2; // status: image file not linked with metadata
 const MaxCar = 100000000;  // car size 1MB max
 const NFTStorageToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDNjMjJlNDBBNDdiQWNBMmExMzUxOWM2RUZDODA3NEE0Mjg1YUE0RDIiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY1MDkwODQ2NDUzMCwibmFtZSI6IlRva2VuTWludGVyVGVzdCJ9.Oe5zDWDgTCEyGV__QVbVEZ6CH1aegZh5u8hPOjrIuk8'
-
-const NFTStorageClient = new NFTStorage({
-  token: NFTStorageToken
- // endpoint: new URL('http://localhost:8080/')
-})
-
+const NFTStorageClient = new NFTStorage( { token: NFTStorageToken } );
 
 function error(e) { console.log('error: '+e); }
 function error_from_readentries(e) { console.log('error_from_readentries: '+e); }
@@ -24,26 +20,25 @@ async function hello_from_flow(){  // just to see if we got Flow...
   let msg = 'hello';
   fcl.config().put( "accessNode.api", "https://access-testnet.onflow.org" );  
   msg = await fcl.query({
-    cadence: `pub fun main(): String { return "Hello from Flow!"; }`
+    cadence: `pub fun main(): String { return "With greetings from Flow!"; }`
   });
   return msg;
 }
 
-async function processItems( entry, path, metadata ){
+async function processItems( entry, path, metadata, fileset, car_files ){
     if( entry.kind === 'file' ){
       const file = await entry.getFile();
       if( file !== null ){
           if( file.name.match(/^meta.*\.csv$/ ) ){
               metadata = await processMetadataFile( path, file, metadata )
           } else {
-              metadata.nft_data[ file.name ] = metadata.nft_data[ file.name ] || { };
-              metadata.nft_data[ file.name ].status = OK;
-              metadata.nft_data[ file.name ].content = file;
+              fileset[ file.name ] = NOK;
+              car_files.push( { path: file.name, content: file } );
           }
       }
     } else if( entry.kind === 'directory' ){
       for await (const handle of entry.values()) {  
-          metadata = await processItems( handle, 'assets', metadata );
+          metadata = await processItems( handle, 'assets', metadata, fileset, car_files );
       }
     }
     return metadata;
@@ -57,21 +52,26 @@ async function processMetadataFile( path, file, metadata ){
             let text = e.target.result;
             let pt = Papa.parse( text );
             metadata.attributes = pt.data[0];
+            for ( let attr of metadata.attributes ){ // determine which attributes reference media file names
+                if( attr.toLowerCase().match(/^file/ ) 
+                    || attr.toLowerCase().match( /^image/ ) 
+                    || attr.toLowerCase().match( /thumbnail/ )
+                  ){
+                  metadata.carkeys.push( attr ); 
+                }
+            }
             metadata.nft_data = pt.data.slice(1).reduce( (a,f)=>{
               if( f && f.length > 0 && f[0] !== '' ){
                   let nft_attribs = {};
                   let key = null;
                   for( let i=0; i < metadata.attributes.length; i++ ){
                     nft_attribs[ metadata.attributes[i] ] = f[ i ];
-                    if( metadata.attributes[i].toLowerCase().match(/^file/ ) ){
-                      metadata.key = metadata.attributes[i]; // which attribute in metadata file contains the image file name
-                      key = f[ i ];
-                    }
+                    if( metadata.attributes[i] === 'name' ){ key = f[ i ]; }
                   }
                   if( !key ){ 
-                    console.log( 'nft metadata requires a filename! f='+JSON.stringify(f) ); 
+                    console.log( 'nft metadata requires a name! f='+JSON.stringify(f) ); 
                   } else if( metadata.nft_data[ key ] ){
-                    a[ key ] = { ...{ data: nft_attribs }, ...metadata.nft_data[key] }
+                    a[ key ] = { ...{ data: nft_attribs }, ...metadata.nft_data[ key ] }
                   } else {
                     a[ key ] = { data: nft_attribs, status: 0 };
                   }
@@ -119,30 +119,33 @@ async function handleAssetFolderDrop(e) {
     e.preventDefault();
 
     //---- asset directory dropped: find and parse metadata file, set status on image files
-    var metadata = { attributes:[], nft_data:{} };
+    let metadata = { attributes:[], nft_data:{}, carkeys:[] };
+    let fileset = {};
+    let car_files = [];
 
     for( const item of e.dataTransfer.items ) {
-        if (item.kind === 'file') {  // kind will be 'file' for file/directory
+        if (item.kind === 'file') {  // kind will be 'file' for files or directory
             const fshandle = await item.getAsFileSystemHandle();
-            let md = await processItems( fshandle, null, metadata );
+            let md = await processItems( fshandle, null, metadata, fileset, car_files );
             metadata = md || metadata;
         }
     }
 
     //---- check for errors in metadata: a) files w/ no metadata or b) metadata w/ no file
-    let car_files = [];
     for( const key in metadata.nft_data ){
         let item = metadata.nft_data[ key ]
-        if( item.content ){
-            if( item.data ){
-              car_files.push( { path: item.content.name, content: item.content } );
-              item.data.path = item.content.name;
+        for( const n of metadata.carkeys ){
+            if( fileset[ item.data[ n ] ] ){
+              fileset[ item.data[ n ] ] = OK;  // mark the file as referenced
+              //item.assets[ n ] = OK;  // mark the metadata assets for this attribute as OK
             } else {
-              console.log('WARNING: no metadata for file '+item.content.name );
+              let msg = item.data[ n ]? 'FILE NOT FOUND' : 'NO FILE REFERENCED';
+              console.log( `WARNING: ${msg} for item: ${item.data.name}.${n}` );
             }
-        } else {
-          console.log( 'WARNING: no file found for item '+JSON.stringify( item.data ) );
         }
+    }
+    for( const k in fileset ){
+      if( fileset[ k ] == NOK ) console.log( `WARNING: ASSET FILE NOT REFERENCED BY ANY NFT: ${k}` );
     }
 
     //---- build .car file

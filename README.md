@@ -39,14 +39,25 @@ The assets folder contains
 
 Create the metadata file in a spreadsheet like MS Word or Google Sheets.  Save as a comma-separated values (CSV) file.  Put it in your assets directory with the NFT images.
 
-Put the property names in the first row.  Property names must coordinate with your NFT contract.  That means these should include
+Put the property names in the first row.  Put the values for each NFT in a separate row below that.
+
+Property names must coordinate with your NFT contract.  That means these should include:
 - name
 - description
 - thumbnail
 - filename
 
-Filename is a placeholder for the main NFT asset file, whether png, jpeg, video, etc.  Suggestions welcome.
+The program looks for attributes that reference media files found in the assets directory.  Currently it looks for attributes that:
+- start with 'file', as in 'file', 'filename', etc.
+- start with 'image', as in 'image', 'image_file', etc.
+- contain 'thumbnail' anywhere, as in 'thumbnail', 'nft_thumbnail', etc.
 
-Put the values for each NFT in a separate row below that.
+### Error Handling
 
+The program currently looks for:
+- asset files that are not referenced by any NFT in the metadata file;
+- metadata records that reference asset files that are NOT FOUND in the folder;
+- metadata records with properties identified as asset properties that do not reference anything.
+
+It doesn't check for attributes that it identifies as asset references but which actually are not used to reference asset files, such as 'thumbnail_width', etc.
 

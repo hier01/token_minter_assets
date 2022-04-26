@@ -1,5 +1,5 @@
-name,file,description
-Cap1,nft_cap1.png,White cap with petroman
-Cap2,nft_cap2.png,Purple cap with petroman
-Cap3,nft_cap3.png,Green cap with deer
-Cap4,nft_cap4.png,Gray cap with petroman
+name,file,description,thumbnail
+Cap1,nft_cap1.png,White cap with petroman,nft_cap1_thmb.png
+Cap2,nft_cap2.png,Purple cap with petroman,nft_cap2_thmb.png
+Cap3,nft_cap3.png,Green cap with deer,nft_cap3_thmb.png
+Cap4,nft_cap4.png,Gray cap with petroman,nft_cap4_thmb.png
