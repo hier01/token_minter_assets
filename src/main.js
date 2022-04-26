@@ -103,15 +103,7 @@ async function uploadCar( car ) {
         for await ( const smallCar of splitter.cars() ) {
           for await (const chunk of smallCar) { // Each smallCar is an AsyncIterable<Uint8Array> of CAR data
               cars.push( chunk );
-            // Do something with the car data...
-            // For example, you could upload it to the NFT.storage HTTP API
-            // https://nft.storage/api-docs
           }
-          // You can also get the root CID of each small CAR with the getRoots method:
-          const roots = await smallCar.getRoots()
-          console.log('root cids', roots)
-          // Since we're using TreewalkCarSpliter, all the smaller CARs should have the
-          // same root CID as the large input CAR.
         }
     }
     //--- upload car(s) to IPFS
@@ -121,7 +113,6 @@ async function uploadCar( car ) {
     return result_cid
 
 }
-
 
 async function handleAssetFolderDrop(e) {
     e.stopPropagation();
@@ -143,7 +134,14 @@ async function handleAssetFolderDrop(e) {
     for( const key in metadata.nft_data ){
         let item = metadata.nft_data[ key ]
         if( item.content ){
-            car_files.push( { path: item.content.name, content: item.content } );
+            if( item.data ){
+              car_files.push( { path: item.content.name, content: item.content } );
+              item.data.path = item.content.name;
+            } else {
+              console.log('WARNING: no metadata for file '+item.content.name );
+            }
+        } else {
+          console.log( 'WARNING: no file found for item '+JSON.stringify( item.data ) );
         }
     }
 
@@ -152,14 +150,20 @@ async function handleAssetFolderDrop(e) {
       input: car_files,
       blockstore: new MemoryBlockStore()
     })
-    console.log( 'root= '+root+' car= '+car )
 
     //---- upload to IPFS
     let result_cid = await uploadCar( car )
-
+    if( result_cid !== root.toString() ){
+        console.log( 'WARNING: precomputed CID does not match CID from IPFS' );
+    }
     //---- propagate the CID into the metadata.nft_data
-    console.log( 'cid='+result_cid )
-
+    console.log( 'INFO: uploaded car file: CID='+result_cid )
+    for( const key in metadata.nft_data ){
+        let item = metadata.nft_data[ key ]
+        if( item.content && item.data ){
+              item.data.cid = result_cid;
+        }
+    }
 }
 
 function handleDragOver(evt) {
