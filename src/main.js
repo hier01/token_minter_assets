@@ -5,6 +5,7 @@ import { unpack } from 'ipfs-car/unpack'
 import { MemoryBlockStore } from 'ipfs-car/blockstore/memory'
 import { TreewalkCarSplitter } from 'carbites/treewalk'
 import * as fcl from '@onflow/fcl';
+import * as t from '@onflow/types';
 
 
 const OK = 1; // status: image file linked with metadata
@@ -19,26 +20,49 @@ function error_from_readentries(e) { console.log('error_from_readentries: '+e); 
 async function hello_from_flow(){  // just to see if we got Flow...
   let msg = 'hello';
   fcl.config().put( "accessNode.api", "https://access-testnet.onflow.org" );  
-  msg = await fcl.query({
-    cadence: `pub fun main(): String { return "With greetings from Flow!"; }`
+  msg = await fcl.query( {
+    cadence: `pub fun main(): String { let s:String = "With greetings from Flow!";  let digest = HashAlgorithm.SHA3_256.hash( s.utf8 );  return String.encodeHex( digest ); }`,
+    //cadence: `pub fun main(): String { return "With greetings from Flow!"; }`
   });
   return msg;
 }
 
-async function processItems( entry, path, metadata, fileset, car_files ){
+async function get_digest_from_flow( item, attributes ){
+  let sep = '';
+  console.log('attributes '+attributes );
+  let vals = attributes.reduce( (a,k)=>{
+    let v = isNaN( item.data[ k ] )? item.data[k] : item.data[k].toString();
+    a += sep + v;
+    sep='::';
+    return a;
+  }, '' );
+
+  const digest = await fcl.query( {
+    cadence: `
+      pub fun main( metavals: String ): String { 
+        let digest = HashAlgorithm.SHA3_256.hash( metavals.utf8 );  
+        return String.encodeHex( digest ); 
+      }
+    `,
+    args: (arg, t)=>[ arg( vals, t.String ) ]
+  } );
+  return digest;
+}
+
+async function processItems( entry, path, metadata, asset_list, car_files ){
     if( entry.kind === 'file' ){
       const file = await entry.getFile();
       if( file !== null ){
           if( file.name.match(/^meta.*\.csv$/ ) ){
               metadata = await processMetadataFile( path, file, metadata )
           } else {
-              fileset[ file.name ] = NOK;
+              asset_list[ file.name ] = NOK;
               car_files.push( { path: file.name, content: file } );
           }
       }
     } else if( entry.kind === 'directory' ){
       for await (const handle of entry.values()) {  
-          metadata = await processItems( handle, 'assets', metadata, fileset, car_files );
+          metadata = await processItems( handle, 'assets', metadata, asset_list, car_files );
       }
     }
     return metadata;
@@ -118,15 +142,19 @@ async function handleAssetFolderDrop(e) {
     e.stopPropagation();
     e.preventDefault();
 
-    //---- asset directory dropped: find and parse metadata file, set status on image files
+    //---- asset directory has been dropped: find and parse metadata file, set status on image files
     let metadata = { attributes:[], nft_data:{}, carkeys:[] };
-    let fileset = {};
+    let asset_list = {};
     let car_files = [];
+    let metadata_hash_lib = {};
 
+    //---- first we're gonna inventory the files dropped (the dataTransfer.items) 
+    //     we use processItems()
+    //     the first item will be the assets folder itself (directory)
     for( const item of e.dataTransfer.items ) {
         if (item.kind === 'file') {  // kind will be 'file' for files or directory
             const fshandle = await item.getAsFileSystemHandle();
-            let md = await processItems( fshandle, null, metadata, fileset, car_files );
+            let md = await processItems( fshandle, null, metadata, asset_list, car_files );
             metadata = md || metadata;
         }
     }
@@ -135,17 +163,26 @@ async function handleAssetFolderDrop(e) {
     for( const key in metadata.nft_data ){
         let item = metadata.nft_data[ key ]
         for( const n of metadata.carkeys ){
-            if( fileset[ item.data[ n ] ] ){
-              fileset[ item.data[ n ] ] = OK;  // mark the file as referenced
+            if( asset_list[ item.data[ n ] ] ){
+              asset_list[ item.data[ n ] ] = OK;  // mark the file as referenced
               //item.assets[ n ] = OK;  // mark the metadata assets for this attribute as OK
             } else {
               let msg = item.data[ n ]? 'FILE NOT FOUND' : 'NO FILE REFERENCED';
               console.log( `WARNING: ${msg} for item: ${item.data.name}.${n}` );
             }
         }
+        let digest = await get_digest_from_flow( item, metadata.attributes );
+        metadata_hash_lib[ item.data.serial ] = digest;
+        console.log( `INFO: hash for item ${item.data.serial} = ${digest}` );
     }
-    for( const k in fileset ){
-      if( fileset[ k ] == NOK ) console.log( `WARNING: ASSET FILE NOT REFERENCED BY ANY NFT: ${k}` );
+    for( const k in asset_list ){
+      if( asset_list[ k ] == NOK ) console.log( `WARNING: ASSET FILE NOT REFERENCED BY ANY NFT: ${k}` );
+    }
+
+    //---- add metadata to .car file
+    for( const key in metadata.nft_data ){
+        let item = metadata.nft_data[ key ]
+        car_files.push( {  path: item.data.serial, content: JSON.stringify( item.data ) } );  // 
     }
 
     //---- build .car file
