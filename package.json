@@ -16,9 +16,10 @@
   "dependencies": {
     "@onflow/fcl": "^0.0.78",
     "carbites": "^1.0.6",
+    "file-system-access": "^1.0.2",
     "ipfs-car": "^0.7.0",
-    "papaparse": "^5.3.2",
-    "nft.storage":"latest",
-    "node-polyfill-webpack-plugin":"latest"
+    "nft.storage": "latest",
+    "node-polyfill-webpack-plugin": "latest",
+    "papaparse": "^5.3.2"
   }
 }

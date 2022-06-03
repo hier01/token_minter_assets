@@ -6,6 +6,7 @@ import { MemoryBlockStore } from 'ipfs-car/blockstore/memory'
 import { TreewalkCarSplitter } from 'carbites/treewalk'
 import * as fcl from '@onflow/fcl';
 import * as t from '@onflow/types';
+import 'file-system-access/lib/polyfillDataTransferItem.js'
 
 
 const OK = 1; // status: image file linked with metadata
@@ -24,6 +25,28 @@ async function hello_from_flow(){  // just to see if we got Flow...
     cadence: `pub fun main(): String { let s:String = "With greetings from Flow!";  let digest = HashAlgorithm.SHA3_256.hash( s.utf8 );  return String.encodeHex( digest ); }`,
     //cadence: `pub fun main(): String { return "With greetings from Flow!"; }`
   });
+
+  let data = [ { key:"name", value:"Foofoo"}, { key:"breed", value:"poodle"} ];
+  const val = await fcl.query( {
+    cadence: `
+      pub fun main( dict: { String: AnyStruct} ): Bool { 
+          let keys = dict.keys
+          let vals = dict.values
+          //let g: String = vals[0] as? String ?? "No Luck"   // returns "Poodle"
+          //let g: String = dict["breed"] as? String ?? "No Luck"  // returns "No Luck"
+          return dict["breed"] as? String == "Poodle"  // returns true
+      }
+    `,
+    args: (arg, t)=>[ 
+      arg( 
+        data, 
+        t.Dictionary( { key: t.String, value: t.String } ) 
+      ) 
+    ]
+  } );
+  console.log( val )
+
+
   return msg;
 }
 
@@ -213,6 +236,7 @@ function handleDragOver(evt) {
 }
 
 async function make_div() {
+  //await polyfillDataTransferItem();  // activate polyfill
   const div = document.createElement('div');
   let htm = `<p>Drop assets folder here.  Include "metadata.csv" and NFT image files</p><div id='drop_zone' class='dropDiv' style='border: 1px solid; height: 200px; width: 50%; background-color: powderblue;'></div>`;
   let flowhello = await hello_from_flow(); 
